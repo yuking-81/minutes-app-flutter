@@ -188,12 +188,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.shopping_bag, color: Colors.orange),
-              title: const Text('100ポイント購入 (¥120)'),
-              subtitle: const Text('Google Play 決済を使用します'),
-              onTap: () {
-                // TODO: 課金の実装
-                ref.read(userProvider.notifier).addPoints(100);
-                Navigator.pop(context);
+              title: const Text('100ポイント購入 (テスト用)'),
+              subtitle: const Text('タップすると即座に100pt追加されます'),
+              onTap: () async {
+                await ref.read(userProvider.notifier).addPoints(100);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('100ポイント追加されました！')),
+                  );
+                  Navigator.pop(context);
+                }
               },
             ),
           ],
