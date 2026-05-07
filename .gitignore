@@ -50,3 +50,5 @@ app.*.map.json
 # Backend is managed in a separate repository
 /server/
 
+# Local implementation worktrees
+.worktrees/
