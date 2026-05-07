@@ -8,7 +8,17 @@ class BackendService {
   ));
   final String _baseUrl;
 
-  BackendService() : _baseUrl = dotenv.get('BACKEND_URL', fallback: 'http://localhost:3000');
+  BackendService()
+      : _baseUrl = dotenv.isInitialized
+            ? dotenv.get('BACKEND_URL', fallback: 'http://localhost:3000')
+            : 'http://localhost:3000';
+
+  void _logDioError(String operation, Object error) {
+    if (error is DioException) {
+      print('BackendService: $operation url=${error.requestOptions.uri}');
+      print('BackendService: $operation status=${error.response?.statusCode} data=${error.response?.data}');
+    }
+  }
 
   // ユーザーのポイント残高を取得
   Future<int> getBalance(String deviceId) async {
@@ -16,6 +26,7 @@ class BackendService {
       final response = await _dio.get('$_baseUrl/user/balance/$deviceId');
       return response.data['points'] as int;
     } catch (e) {
+      _logDioError('getBalance', e);
       print('BackendService: getBalance error: $e');
       return 0;
     }
@@ -30,6 +41,7 @@ class BackendService {
       );
       return response.data['points'] as int;
     } catch (e) {
+      _logDioError('addReward', e);
       print('BackendService: addReward error: $e');
       return null;
     }
@@ -55,6 +67,7 @@ class BackendService {
       if (e is DioException && e.response?.statusCode == 403) {
         throw Exception('ポイントが不足しています');
       }
+      _logDioError('summarize', e);
       print('BackendService: summarize error: $e');
       rethrow;
     }
@@ -77,6 +90,7 @@ class BackendService {
       );
       return response.data['text'] as String;
     } catch (e) {
+      _logDioError('transcribe', e);
       print('BackendService: transcribe error: $e');
       return null;
     }

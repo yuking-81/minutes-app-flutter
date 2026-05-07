@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/minute_model.dart';
 import '../services/database_service.dart';
-import '../services/groq_service.dart';
 import '../services/audio_service.dart';
 import '../services/foreground_service.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
