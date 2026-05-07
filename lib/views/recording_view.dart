@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/minute_provider.dart';
+import '../widgets/recording_waveform.dart';
 
 class RecordingView extends ConsumerStatefulWidget {
   const RecordingView({super.key});
@@ -26,11 +28,23 @@ class _RecordingViewState extends ConsumerState<RecordingView> with SingleTicker
 
     // モーダルが開かれたら自動で録音を開始する
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final state = ref.read(recordingStateProvider);
       if (state.status == RecordingStatus.idle) {
         ref.read(recordingStateProvider.notifier).start();
       }
+      _syncPulseAnimation(ref.read(recordingStateProvider).status);
     });
+  }
+
+  void _syncPulseAnimation(RecordingStatus status) {
+    if (status == RecordingStatus.recording) {
+      if (!_pulseController.isAnimating) {
+        _pulseController.repeat(reverse: true);
+      }
+    } else if (_pulseController.isAnimating) {
+      _pulseController.stop();
+    }
   }
 
   @override
@@ -41,15 +55,53 @@ class _RecordingViewState extends ConsumerState<RecordingView> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<RecordingState>(recordingStateProvider, (previous, next) {
+      if (previous?.status != next.status) {
+        _syncPulseAnimation(next.status);
+      }
+    });
+
     final state = ref.watch(recordingStateProvider);
     final notifier = ref.read(recordingStateProvider.notifier);
 
-    if (state.status == RecordingStatus.recording) {
-      _pulseController.repeat(reverse: true);
-    } else {
-      _pulseController.stop();
-    }
+    return RecordingViewContent(
+      state: state,
+      pulseAnimation: _pulseAnimation,
+      onStart: () => notifier.start(),
+      onStop: () => notifier.stop(),
+      onClose: () => Navigator.pop(context),
+    );
+  }
+}
 
+@visibleForTesting
+class RecordingViewContent extends StatelessWidget {
+  @visibleForTesting
+  static const double recordingMicIconSize = 40;
+
+  @visibleForTesting
+  static const double recordingMicPadding = 12;
+
+  @visibleForTesting
+  static const double recordingMicVisualDiameter = recordingMicIconSize + (recordingMicPadding * 2);
+
+  const RecordingViewContent({
+    super.key,
+    required this.state,
+    required this.pulseAnimation,
+    this.onStart,
+    this.onStop,
+    this.onClose,
+  });
+
+  final RecordingState state;
+  final Animation<double> pulseAnimation;
+  final VoidCallback? onStart;
+  final VoidCallback? onStop;
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       decoration: BoxDecoration(
@@ -76,8 +128,12 @@ class _RecordingViewState extends ConsumerState<RecordingView> with SingleTicker
           ),
           const SizedBox(height: 32),
           
-          _buildCenterDisplay(context, state),
-            
+          _buildCenterDisplay(context),
+          if (state.status == RecordingStatus.recording) ...[
+            const SizedBox(height: 24),
+            RecordingWaveform(amplitudes: state.amplitudes),
+          ],
+              
           const SizedBox(height: 24),
           Text(
             _getStatusText(state.status),
@@ -101,27 +157,31 @@ class _RecordingViewState extends ConsumerState<RecordingView> with SingleTicker
           ],
           
           const SizedBox(height: 40),
-          _buildActionButton(context, state, notifier),
+          _buildActionButton(context),
           const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _buildCenterDisplay(BuildContext context, RecordingState state) {
+  Widget _buildCenterDisplay(BuildContext context) {
     switch (state.status) {
       case RecordingStatus.idle:
         return Icon(Icons.mic_none, size: 80, color: Theme.of(context).colorScheme.outline);
       case RecordingStatus.recording:
         return ScaleTransition(
-          scale: _pulseAnimation,
+          scale: pulseAnimation,
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(RecordingViewContent.recordingMicPadding),
             decoration: BoxDecoration(
               color: Colors.red.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.mic, size: 80, color: Colors.red),
+            child: const Icon(
+              Icons.mic,
+              size: RecordingViewContent.recordingMicIconSize,
+              color: Colors.red,
+            ),
           ),
         );
       case RecordingStatus.transcribing:
@@ -158,13 +218,13 @@ class _RecordingViewState extends ConsumerState<RecordingView> with SingleTicker
     }
   }
 
-  Widget _buildActionButton(BuildContext context, RecordingState state, RecordingNotifier notifier) {
+  Widget _buildActionButton(BuildContext context) {
     if (state.status == RecordingStatus.recording) {
       return SizedBox(
         width: double.infinity,
         height: 56,
         child: FilledButton.icon(
-          onPressed: () => notifier.stop(),
+          onPressed: onStop,
           icon: const Icon(Icons.stop),
           label: const Text('録音を停止して文字起こし'),
           style: FilledButton.styleFrom(
@@ -178,7 +238,7 @@ class _RecordingViewState extends ConsumerState<RecordingView> with SingleTicker
         width: double.infinity,
         height: 56,
         child: FilledButton.icon(
-          onPressed: () => notifier.start(),
+          onPressed: onStart,
           icon: const Icon(Icons.mic),
           label: const Text('録音を開始する'),
           style: FilledButton.styleFrom(
@@ -191,7 +251,7 @@ class _RecordingViewState extends ConsumerState<RecordingView> with SingleTicker
         width: double.infinity,
         height: 56,
         child: TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: onClose,
           child: const Text('閉じる'),
         ),
       );

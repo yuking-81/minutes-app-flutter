@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,7 +15,7 @@ import 'user_provider.dart';
 final databaseServiceProvider = Provider((ref) => DatabaseService.instance);
 final audioServiceProvider = Provider((ref) {
   final service = AudioService();
-  ref.onDispose(() => service.dispose());
+  ref.onDispose(() => unawaited(service.dispose()));
   return service;
 });
 
@@ -111,25 +112,37 @@ final recordingStateProvider = StateNotifierProvider<RecordingNotifier, Recordin
 enum RecordingStatus { idle, recording, transcribing, success, error }
 
 class RecordingState {
+  static const int maxAmplitudeSamples = 48;
+
   final RecordingStatus status;
   final String? filePath;
   final String? errorMessage;
+  final List<double> amplitudes;
 
   RecordingState({
     this.status = RecordingStatus.idle,
     this.filePath,
     this.errorMessage,
-  });
+    List<double> amplitudes = const [],
+  }) : amplitudes = List<double>.unmodifiable(amplitudes);
+
+  static List<double> cappedAmplitudes(List<double> values) {
+    if (values.length <= maxAmplitudeSamples) return List<double>.unmodifiable(values);
+    return List<double>.unmodifiable(values.sublist(values.length - maxAmplitudeSamples));
+  }
 
   RecordingState copyWith({
     RecordingStatus? status,
     String? filePath,
     String? errorMessage,
+    bool clearErrorMessage = false,
+    List<double>? amplitudes,
   }) {
     return RecordingState(
       status: status ?? this.status,
       filePath: filePath ?? this.filePath,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearErrorMessage ? null : errorMessage ?? this.errorMessage,
+      amplitudes: amplitudes ?? this.amplitudes,
     );
   }
 }
@@ -139,44 +152,119 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   final BackendService _backend;
   final UserNotifier _userNotifier;
   final MinutesListNotifier _listNotifier;
+  StreamSubscription<double>? _amplitudeSubscription;
+  int _recordingSession = 0;
+  bool _isDisposed = false;
+  bool _isStarting = false;
+  final bool _registerForegroundListener;
+  final bool _updateForegroundOnDispose;
 
-  RecordingNotifier(this._audio, this._backend, this._userNotifier, this._listNotifier) : super(RecordingState()) {
-    _initForegroundListener();
+  RecordingNotifier(
+    this._audio,
+    this._backend,
+    this._userNotifier,
+    this._listNotifier, {
+    bool registerForegroundListener = true,
+    bool updateForegroundOnDispose = true,
+  })  : _registerForegroundListener = registerForegroundListener,
+        _updateForegroundOnDispose = updateForegroundOnDispose,
+        super(RecordingState()) {
+    if (_registerForegroundListener) {
+      _initForegroundListener();
+    }
   }
 
   void _initForegroundListener() {
-    FlutterForegroundTask.addTaskDataCallback((data) {
-      if (data == MyTaskHandler.actionStart) {
-        start();
-      } else if (data == MyTaskHandler.actionStop) {
-        stop();
-      }
-    });
+    FlutterForegroundTask.addTaskDataCallback(_handleForegroundTaskData);
+  }
+
+  void _handleForegroundTaskData(Object data) {
+    if (_isDisposed || !mounted) return;
+    if (data == MyTaskHandler.actionStart) {
+      unawaited(start());
+    } else if (data == MyTaskHandler.actionStop) {
+      unawaited(stop());
+    }
   }
 
   Future<void> start() async {
-    print('RecordingNotifier: 録音開始要請');
-    final path = await _audio.startRecording();
-    if (path != null) {
-      state = state.copyWith(status: RecordingStatus.recording, filePath: path, errorMessage: null);
-      await ForegroundService.updateService(true);
-    } else {
-      state = state.copyWith(status: RecordingStatus.error, errorMessage: '録音の開始に失敗しました。マイクの権限を確認してください。');
+    if (_isDisposed || !mounted) return;
+    if (state.status != RecordingStatus.idle && state.status != RecordingStatus.error) return;
+    if (_isStarting) return;
+    _isStarting = true;
+    try {
+      print('RecordingNotifier: 録音開始要請');
+      final session = ++_recordingSession;
+      bool isCurrent() => !_isDisposed && mounted && session == _recordingSession;
+
+      final path = await _audio.startRecording();
+      if (!isCurrent()) {
+        if (path != null) await _audio.stopRecording();
+        return;
+      }
+      if (path != null) {
+        state = state.copyWith(
+          status: RecordingStatus.recording,
+          filePath: path,
+          clearErrorMessage: true,
+          amplitudes: const [],
+        );
+        await _amplitudeSubscription?.cancel();
+        if (!isCurrent()) return;
+        _amplitudeSubscription = _audio.amplitudeStream.listen(
+          (value) {
+            if (_isDisposed || !mounted || state.status != RecordingStatus.recording) return;
+            state = state.copyWith(
+              amplitudes: RecordingState.cappedAmplitudes([...state.amplitudes, value]),
+            );
+          },
+          onError: (error) => print('RecordingNotifier: 音量ストリームエラー: $error'),
+        );
+        if (!isCurrent()) return;
+        await ForegroundService.updateService(true);
+        if (!isCurrent()) {
+          if (_isDisposed || !mounted || state.status != RecordingStatus.recording) {
+            unawaited(ForegroundService.updateService(false));
+          }
+          return;
+        }
+      } else {
+        state = state.copyWith(status: RecordingStatus.error, errorMessage: '録音の開始に失敗しました。マイクの権限を確認してください。', amplitudes: const []);
+      }
+    } finally {
+      _isStarting = false;
     }
   }
 
   Future<void> stop() async {
+    if (_isDisposed || !mounted) return;
+    if (_isStarting && state.status != RecordingStatus.recording) {
+      _recordingSession++;
+      unawaited(ForegroundService.updateService(false));
+      return;
+    }
+    if (state.status != RecordingStatus.recording) return;
     print('RecordingNotifier: 録音停止要請');
+    final session = ++_recordingSession;
+    bool isCurrent() => !_isDisposed && mounted && session == _recordingSession;
+
+    await _amplitudeSubscription?.cancel();
+    _amplitudeSubscription = null;
+    if (!isCurrent()) return;
     state = state.copyWith(status: RecordingStatus.transcribing);
     final path = await _audio.stopRecording();
+    if (!isCurrent()) return;
     
     if (path != null) {
       try {
         final file = File(path);
-        if (!await file.exists()) {
+        final exists = await file.exists();
+        if (!isCurrent()) return;
+        if (!exists) {
           throw Exception('録音ファイルが見つかりません。');
         }
         final fileSize = await file.length();
+        if (!isCurrent()) return;
         print('RecordingNotifier: 録音ファイルサイズ: $fileSize bytes');
         
         if (fileSize < 100) {
@@ -189,6 +277,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
           deviceId: deviceId,
           filePath: path,
         );
+        if (!isCurrent()) return;
         
         if (text == null) {
           throw Exception('サーバーとの通信に失敗しました。サーバーのログまたは接続を確認してください。');
@@ -206,19 +295,46 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
         );
         
         await _listNotifier.addMinute(newMinute);
-        state = state.copyWith(status: RecordingStatus.success);
+        if (!isCurrent()) return;
+        state = state.copyWith(status: RecordingStatus.success, amplitudes: const []);
         await ForegroundService.updateService(false);
+        if (!isCurrent()) return;
         
         Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) state = state.copyWith(status: RecordingStatus.idle);
+          if (isCurrent()) state = state.copyWith(status: RecordingStatus.idle);
         });
       } catch (e) {
         print('RecordingNotifier: エラー発生: $e');
-        state = state.copyWith(status: RecordingStatus.error, errorMessage: e.toString());
+        if (!isCurrent()) return;
+        state = state.copyWith(status: RecordingStatus.error, errorMessage: e.toString(), amplitudes: const []);
         await ForegroundService.updateService(false);
+        if (!_isDisposed && mounted && session != _recordingSession && state.status == RecordingStatus.recording) {
+          unawaited(ForegroundService.updateService(true));
+        }
       }
     } else {
-      state = state.copyWith(status: RecordingStatus.error, errorMessage: '録音ファイルの取得に失敗しました。');
+      if (!isCurrent()) return;
+      state = state.copyWith(status: RecordingStatus.error, errorMessage: '録音ファイルの取得に失敗しました。', amplitudes: const []);
+      await ForegroundService.updateService(false);
+      if (!_isDisposed && mounted && session != _recordingSession && state.status == RecordingStatus.recording) {
+        unawaited(ForegroundService.updateService(true));
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _isStarting = false;
+    _recordingSession++;
+    if (_registerForegroundListener) {
+      FlutterForegroundTask.removeTaskDataCallback(_handleForegroundTaskData);
+    }
+    final subscription = _amplitudeSubscription;
+    if (subscription != null) unawaited(subscription.cancel());
+    if (_updateForegroundOnDispose) {
+      unawaited(ForegroundService.updateService(false));
+    }
+    super.dispose();
   }
 }
