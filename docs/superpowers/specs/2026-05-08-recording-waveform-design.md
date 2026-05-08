@@ -40,9 +40,12 @@ During recording, keep the existing red microphone visual and add a horizontal w
 The waveform should:
 
 - Use the app's existing modal styling.
+- Reduce the recording microphone visual from about `128px` total diameter to about `64px` total diameter by using smaller circle padding and a smaller icon.
+- Use the freed vertical space to increase the waveform canvas height from `64px` to `128px`.
 - Draw vertical rounded bars around a center line.
 - Show roughly the last 40 to 60 samples.
 - Animate by updating as new amplitude samples arrive.
+- Visually emphasize the bar height at paint time while preserving visible dips: subtract a `0.20` display noise floor, scale the remaining range by `2.0x`, then clamp to `0.0` to `1.0`.
 - Fall back to low bars if there is silence.
 - Not appear during idle, transcribing, success, or error states.
 
@@ -53,6 +56,7 @@ Add `List<double> amplitudes` to `RecordingState`.
 Rules:
 
 - Values are normalized from `0.0` to `1.0`.
+- Stored values remain raw normalized amplitudes; visual emphasis is handled only by `RecordingWaveform` so state semantics stay unchanged.
 - Recording start clears previous amplitudes.
 - Each new sample appends one value.
 - Keep only the most recent 48 values to avoid unbounded state growth.
