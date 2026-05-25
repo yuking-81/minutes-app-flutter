@@ -70,13 +70,13 @@ class MinutesListNotifier extends StateNotifier<AsyncValue<List<Minute>>> {
 
   Future<void> generateAISummary(Minute minute) async {
     if (minute.id == null) return;
+    final token = _userNotifier.state.token;
+    if (token == null) throw Exception('ログインが必要です');
 
     try {
-      final deviceId = _userNotifier.state.userId;
       final summary = await _backend.summarizeWithPoints(
-        deviceId: deviceId,
+        token: token,
         text: minute.content,
-        pointCost: 10, // 実装計画通りの単価
       );
 
       if (summary == null) throw Exception('APIからの応答がありませんでした');
@@ -122,12 +122,18 @@ class RecordingState {
   final String? filePath;
   final String? errorMessage;
   final List<double> amplitudes;
+  final int elapsedSeconds;
+  final int chargedMinutes;
+  final int remainingPoints;
 
   RecordingState({
     this.status = RecordingStatus.idle,
     this.filePath,
     this.errorMessage,
     List<double> amplitudes = const [],
+    this.elapsedSeconds = 0,
+    this.chargedMinutes = 0,
+    this.remainingPoints = 0,
   }) : amplitudes = List<double>.unmodifiable(amplitudes);
 
   static List<double> cappedAmplitudes(List<double> values) {
@@ -145,6 +151,9 @@ class RecordingState {
     String? errorMessage,
     bool clearErrorMessage = false,
     List<double>? amplitudes,
+    int? elapsedSeconds,
+    int? chargedMinutes,
+    int? remainingPoints,
   }) {
     return RecordingState(
       status: status ?? this.status,
@@ -153,6 +162,9 @@ class RecordingState {
           ? null
           : errorMessage ?? this.errorMessage,
       amplitudes: amplitudes ?? this.amplitudes,
+      elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
+      chargedMinutes: chargedMinutes ?? this.chargedMinutes,
+      remainingPoints: remainingPoints ?? this.remainingPoints,
     );
   }
 }
@@ -163,6 +175,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   final UserNotifier _userNotifier;
   final MinutesListNotifier _listNotifier;
   StreamSubscription<double>? _amplitudeSubscription;
+  Timer? _recordingTimer;
   int _recordingSession = 0;
   bool _isDisposed = false;
   bool _isStarting = false;
@@ -204,6 +217,22 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       return;
     }
     if (_isStarting) return;
+    if (!_userNotifier.state.isAuthenticated) {
+      state = state.copyWith(
+        status: RecordingStatus.error,
+        errorMessage: '録音にはログインが必要です。',
+        amplitudes: const [],
+      );
+      return;
+    }
+    if (_userNotifier.state.points < 1) {
+      state = state.copyWith(
+        status: RecordingStatus.error,
+        errorMessage: 'ポイントが不足しています。動画広告などでポイントを追加してください。',
+        amplitudes: const [],
+      );
+      return;
+    }
     _isStarting = true;
     try {
       appLog('RecordingNotifier: 録音開始要請');
@@ -222,6 +251,9 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
           filePath: path,
           clearErrorMessage: true,
           amplitudes: const [],
+          elapsedSeconds: 0,
+          chargedMinutes: 0,
+          remainingPoints: _userNotifier.state.points,
         );
         await _amplitudeSubscription?.cancel();
         if (!isCurrent()) return;
@@ -239,6 +271,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
           );
         }, onError: (error) => appLog('RecordingNotifier: 音量ストリームエラー: $error'));
         if (!isCurrent()) return;
+        _startRecordingTimer(session);
         await ForegroundService.updateService(true);
         if (!isCurrent()) {
           if (_isDisposed ||
@@ -260,6 +293,42 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
     }
   }
 
+  void _startRecordingTimer(int session) {
+    _recordingTimer?.cancel();
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_isDisposed || !mounted || session != _recordingSession) return;
+      if (state.status != RecordingStatus.recording) return;
+
+      final nextElapsedSeconds = state.elapsedSeconds + 1;
+      state = state.copyWith(elapsedSeconds: nextElapsedSeconds);
+
+      if (nextElapsedSeconds % 60 == 0) {
+        unawaited(_consumeRecordingMinute(session));
+      }
+    });
+  }
+
+  Future<void> _consumeRecordingMinute(int session) async {
+    if (_isDisposed || !mounted || session != _recordingSession) return;
+    try {
+      await _userNotifier.consumeRecordingPoint();
+      if (_isDisposed || !mounted || session != _recordingSession) return;
+      state = state.copyWith(
+        chargedMinutes: state.chargedMinutes + 1,
+        remainingPoints: _userNotifier.state.points,
+      );
+    } on InsufficientPointsException {
+      if (_isDisposed || !mounted || session != _recordingSession) return;
+      state = state.copyWith(
+        errorMessage: 'ポイントが不足したため録音を停止します。',
+        remainingPoints: _userNotifier.state.points,
+      );
+      unawaited(stop());
+    } catch (e) {
+      appLog('RecordingNotifier: ポイント消費エラー: $e');
+    }
+  }
+
   Future<void> stop() async {
     if (_isDisposed || !mounted) return;
     if (_isStarting && state.status != RecordingStatus.recording) {
@@ -272,6 +341,8 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
     final session = ++_recordingSession;
     bool isCurrent() => !_isDisposed && mounted && session == _recordingSession;
 
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
     await _amplitudeSubscription?.cancel();
     _amplitudeSubscription = null;
     if (!isCurrent()) return;
@@ -296,11 +367,9 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
         }
 
         appLog('RecordingNotifier: 文字起こし開始 (ファイルパス: $path)');
-        final deviceId = _userNotifier.state.userId;
-        final text = await _backend.transcribe(
-          deviceId: deviceId,
-          filePath: path,
-        );
+        final token = _userNotifier.state.token;
+        if (token == null) throw Exception('ログインが必要です');
+        final text = await _backend.transcribe(token: token, filePath: path);
         if (!isCurrent()) return;
 
         if (text == null) {
@@ -324,6 +393,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
         state = state.copyWith(
           status: RecordingStatus.success,
           amplitudes: const [],
+          remainingPoints: _userNotifier.state.points,
         );
         await ForegroundService.updateService(false);
         if (!isCurrent()) return;
@@ -374,6 +444,8 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
     }
     final subscription = _amplitudeSubscription;
     if (subscription != null) unawaited(subscription.cancel());
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
     if (_updateForegroundOnDispose) {
       unawaited(ForegroundService.updateService(false));
     }

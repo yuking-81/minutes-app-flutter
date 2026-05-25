@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/minute_provider.dart';
+import 'account_screen.dart';
 import 'recording_view.dart';
 import 'detail_screen.dart';
 import '../providers/user_provider.dart';
@@ -54,10 +55,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 color: Colors.amber,
               ),
               label: Text(
-                '${userState.points} pt',
+                userState.isAuthenticated ? '${userState.points} pt' : 'ログイン',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              onPressed: () => _showShopDialog(context, ref),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AccountScreen()),
+              ),
               backgroundColor: Theme.of(
                 context,
               ).colorScheme.surfaceContainerHighest,
@@ -142,14 +146,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         error: (err, stack) => Center(child: Text('エラーが発生しました: $err')),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => const RecordingView(),
-          );
-        },
+        onPressed: userState.isAuthenticated
+            ? () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const RecordingView(),
+                );
+              }
+            : () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AccountScreen()),
+              ),
         icon: const Icon(Icons.mic),
         label: const Text('録音開始'),
       ),
@@ -175,63 +184,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const Text(
             '下のボタンから録音を開始して作成しましょう',
             style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showShopDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ポイントを取得'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.video_library, color: Colors.blue),
-              title: const Text('動画広告を見て 5pt ゲット'),
-              subtitle: const Text('リワード広告が再生されます'),
-              onTap: () {
-                ref
-                    .read(userProvider.notifier)
-                    .showRewardAd(
-                      onComplete: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('5ポイント追加されました！')),
-                        );
-                      },
-                      onError: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('広告の読み込みに失敗しました')),
-                        );
-                      },
-                    );
-                Navigator.pop(context);
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.shopping_bag, color: Colors.orange),
-              title: const Text('100ポイント購入 (テスト用)'),
-              subtitle: const Text('タップすると即座に100pt追加されます'),
-              onTap: () async {
-                await ref.read(userProvider.notifier).addPoints(100);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('100ポイント追加されました！')),
-                  );
-                  Navigator.pop(context);
-                }
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('閉じる'),
           ),
         ],
       ),

@@ -12,7 +12,12 @@ import 'package:minutes_app/widgets/recording_waveform.dart';
 
 class FakeBackendService extends BackendService {
   @override
-  Future<int> getBalance(String deviceId) async => 0;
+  Future<AuthUser> me(String token) async {
+    return const AuthUser(id: 1, email: 'test@example.com', points: 100);
+  }
+
+  @override
+  Future<List<PointTransaction>> getTransactions(String token) async => [];
 }
 
 void main() {
@@ -144,6 +149,24 @@ void main() {
       0.4,
     ]);
     expect(state.copyWith(amplitudes: [0.7]).amplitudes, [0.7]);
+  });
+
+  test('RecordingState tracks recording point counters', () {
+    final state = RecordingState(
+      elapsedSeconds: 59,
+      chargedMinutes: 0,
+      remainingPoints: 3,
+    );
+
+    final updated = state.copyWith(
+      elapsedSeconds: 60,
+      chargedMinutes: 1,
+      remainingPoints: 2,
+    );
+
+    expect(updated.elapsedSeconds, 60);
+    expect(updated.chargedMinutes, 1);
+    expect(updated.remainingPoints, 2);
   });
 
   test('RecordingState amplitudes defaults to empty', () {

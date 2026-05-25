@@ -140,6 +140,28 @@ class RecordingViewContent extends StatelessWidget {
             _getStatusText(state.status),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
+          if (state.status == RecordingStatus.recording) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                Chip(
+                  avatar: const Icon(Icons.timer, size: 18),
+                  label: Text(_formatElapsed(state.elapsedSeconds)),
+                ),
+                Chip(
+                  avatar: const Icon(Icons.remove_circle_outline, size: 18),
+                  label: Text('${state.chargedMinutes} pt 消費'),
+                ),
+                Chip(
+                  avatar: const Icon(Icons.monetization_on, size: 18),
+                  label: Text('残り ${state.remainingPoints} pt'),
+                ),
+              ],
+            ),
+          ],
 
           if (state.errorMessage != null) ...[
             const SizedBox(height: 16),
@@ -236,6 +258,12 @@ class RecordingViewContent extends StatelessWidget {
       case RecordingStatus.error:
         return 'エラーが発生しました';
     }
+  }
+
+  String _formatElapsed(int seconds) {
+    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+    final remainingSeconds = (seconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$remainingSeconds';
   }
 
   Widget _buildActionButton(BuildContext context) {
