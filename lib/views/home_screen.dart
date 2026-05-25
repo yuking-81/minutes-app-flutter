@@ -18,7 +18,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _showRecordingSheet() {
     if (_isSheetOpen) return;
-    
+
     _isSheetOpen = true;
     showModalBottomSheet(
       context: context,
@@ -48,13 +48,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ActionChip(
-              avatar: const Icon(Icons.monetization_on, size: 18, color: Colors.amber),
+              avatar: const Icon(
+                Icons.monetization_on,
+                size: 18,
+                color: Colors.amber,
+              ),
               label: Text(
                 '${userState.points} pt',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               onPressed: () => _showShopDialog(context, ref),
-              backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
               side: BorderSide.none,
               shape: const StadiumBorder(),
             ),
@@ -65,7 +71,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         data: (minutes) => minutes.isEmpty
             ? _buildEmptyState()
             : ListView.builder(
-                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
                 padding: const EdgeInsets.all(16),
                 itemCount: minutes.length,
                 itemBuilder: (context, index) {
@@ -73,7 +81,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     elevation: 0,
-                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.3),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                       side: BorderSide(
@@ -81,7 +90,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
                       title: Text(
                         minute.title,
                         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -94,14 +106,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             minute.content,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            DateFormat('yyyy/MM/dd HH:mm').format(minute.createdAt),
+                            DateFormat(
+                              'yyyy/MM/dd HH:mm',
+                            ).format(minute.createdAt),
                             style: TextStyle(
                               fontSize: 12,
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.7),
                             ),
                           ),
                         ],
@@ -141,7 +161,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.description_outlined, size: 80, color: Colors.grey.withOpacity(0.5)),
+          Icon(
+            Icons.description_outlined,
+            size: 80,
+            color: Colors.grey.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 16),
           const Text(
             '議事録がありません',
@@ -170,18 +194,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               title: const Text('動画広告を見て 5pt ゲット'),
               subtitle: const Text('リワード広告が再生されます'),
               onTap: () {
-                ref.read(userProvider.notifier).showRewardAd(
-                  onComplete: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('5ポイント追加されました！')),
+                ref
+                    .read(userProvider.notifier)
+                    .showRewardAd(
+                      onComplete: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('5ポイント追加されました！')),
+                        );
+                      },
+                      onError: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('広告の読み込みに失敗しました')),
+                        );
+                      },
                     );
-                  },
-                  onError: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('広告の読み込みに失敗しました')),
-                    );
-                  },
-                );
                 Navigator.pop(context);
               },
             ),

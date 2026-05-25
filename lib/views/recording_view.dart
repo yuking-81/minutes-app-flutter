@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/minute_provider.dart';
@@ -11,7 +10,8 @@ class RecordingView extends ConsumerStatefulWidget {
   ConsumerState<RecordingView> createState() => _RecordingViewState();
 }
 
-class _RecordingViewState extends ConsumerState<RecordingView> with SingleTickerProviderStateMixin {
+class _RecordingViewState extends ConsumerState<RecordingView>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -83,7 +83,8 @@ class RecordingViewContent extends StatelessWidget {
   static const double recordingMicPadding = 12;
 
   @visibleForTesting
-  static const double recordingMicVisualDiameter = recordingMicIconSize + (recordingMicPadding * 2);
+  static const double recordingMicVisualDiameter =
+      recordingMicIconSize + (recordingMicPadding * 2);
 
   const RecordingViewContent({
     super.key,
@@ -109,7 +110,7 @@ class RecordingViewContent extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -122,24 +123,24 @@ class RecordingViewContent extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(height: 32),
-          
+
           _buildCenterDisplay(context),
           if (state.status == RecordingStatus.recording) ...[
             const SizedBox(height: 24),
             RecordingWaveform(amplitudes: state.amplitudes),
           ],
-              
+
           const SizedBox(height: 24),
           Text(
             _getStatusText(state.status),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          
+
           if (state.errorMessage != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -151,11 +152,14 @@ class RecordingViewContent extends StatelessWidget {
               child: Text(
                 state.errorMessage!,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontSize: 13),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                  fontSize: 13,
+                ),
               ),
             ),
           ],
-          
+
           const SizedBox(height: 40),
           _buildActionButton(context),
           const SizedBox(height: 16),
@@ -167,14 +171,20 @@ class RecordingViewContent extends StatelessWidget {
   Widget _buildCenterDisplay(BuildContext context) {
     switch (state.status) {
       case RecordingStatus.idle:
-        return Icon(Icons.mic_none, size: 80, color: Theme.of(context).colorScheme.outline);
+        return Icon(
+          Icons.mic_none,
+          size: 80,
+          color: Theme.of(context).colorScheme.outline,
+        );
       case RecordingStatus.recording:
         return ScaleTransition(
           scale: pulseAnimation,
           child: Container(
-            padding: const EdgeInsets.all(RecordingViewContent.recordingMicPadding),
+            padding: const EdgeInsets.all(
+              RecordingViewContent.recordingMicPadding,
+            ),
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
+              color: Colors.red.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -189,17 +199,27 @@ class RecordingViewContent extends StatelessWidget {
           children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
-            Text('Groq AI 処理中...', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+            Text(
+              'Groq AI 処理中...',
+              style: TextStyle(color: Theme.of(context).colorScheme.primary),
+            ),
           ],
         );
       case RecordingStatus.success:
         return Container(
           padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+          decoration: const BoxDecoration(
+            color: Colors.green,
+            shape: BoxShape.circle,
+          ),
           child: const Icon(Icons.check, size: 48, color: Colors.white),
         );
       case RecordingStatus.error:
-        return Icon(Icons.error_outline, size: 80, color: Theme.of(context).colorScheme.error);
+        return Icon(
+          Icons.error_outline,
+          size: 80,
+          color: Theme.of(context).colorScheme.error,
+        );
     }
   }
 
@@ -229,11 +249,14 @@ class RecordingViewContent extends StatelessWidget {
           label: const Text('録音を停止して文字起こし'),
           style: FilledButton.styleFrom(
             backgroundColor: Colors.red,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         ),
       );
-    } else if (state.status == RecordingStatus.idle || state.status == RecordingStatus.error) {
+    } else if (state.status == RecordingStatus.idle ||
+        state.status == RecordingStatus.error) {
       return SizedBox(
         width: double.infinity,
         height: 56,
@@ -242,7 +265,9 @@ class RecordingViewContent extends StatelessWidget {
           icon: const Icon(Icons.mic),
           label: const Text('録音を開始する'),
           style: FilledButton.styleFrom(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         ),
       );
@@ -250,10 +275,7 @@ class RecordingViewContent extends StatelessWidget {
       return SizedBox(
         width: double.infinity,
         height: 56,
-        child: TextButton(
-          onPressed: onClose,
-          child: const Text('閉じる'),
-        ),
+        child: TextButton(onPressed: onClose, child: const Text('閉じる')),
       );
     }
     return const SizedBox(height: 56);

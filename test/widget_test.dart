@@ -33,12 +33,12 @@ void main() {
     expect(find.text('録音開始'), findsOneWidget);
   });
 
-  testWidgets('RecordingWaveform renders amplitude samples', (WidgetTester tester) async {
+  testWidgets('RecordingWaveform renders amplitude samples', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(
-          body: RecordingWaveform(amplitudes: [0.1, 0.5, 1.0]),
-        ),
+        home: Scaffold(body: RecordingWaveform(amplitudes: [0.1, 0.5, 1.0])),
       ),
     );
 
@@ -74,40 +74,48 @@ void main() {
     expect(recordingWaveformNormalizedAmplitude(double.negativeInfinity), 0.0);
   });
 
-  test('RecordingWaveform sinks low display amplitude before applying gain', () {
-    expect(recordingWaveformDisplayAmplitude(0.0), 0.0);
-    expect(recordingWaveformDisplayAmplitude(0.19), 0.0);
-    expect(recordingWaveformDisplayAmplitude(0.25), closeTo(0.125, 0.0001));
-    expect(recordingWaveformDisplayAmplitude(0.5), closeTo(0.75, 0.0001));
-    expect(recordingWaveformDisplayAmplitude(0.7), 1.0);
-    expect(recordingWaveformDisplayAmplitude(0.9), 1.0);
-  });
+  test(
+    'RecordingWaveform sinks low display amplitude before applying gain',
+    () {
+      expect(recordingWaveformDisplayAmplitude(0.0), 0.0);
+      expect(recordingWaveformDisplayAmplitude(0.19), 0.0);
+      expect(recordingWaveformDisplayAmplitude(0.25), closeTo(0.125, 0.0001));
+      expect(recordingWaveformDisplayAmplitude(0.5), closeTo(0.75, 0.0001));
+      expect(recordingWaveformDisplayAmplitude(0.7), 1.0);
+      expect(recordingWaveformDisplayAmplitude(0.9), 1.0);
+    },
+  );
 
-  testWidgets('RecordingWaveform renders empty amplitudes without exceptions', (WidgetTester tester) async {
+  testWidgets('RecordingWaveform renders empty amplitudes without exceptions', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(
-          body: RecordingWaveform(amplitudes: []),
-        ),
+        home: Scaffold(body: RecordingWaveform(amplitudes: [])),
       ),
     );
 
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('RecordingWaveform renders non-finite and out-of-range amplitudes without exceptions', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: RecordingWaveform(amplitudes: [-1.0, double.nan, 0.5, 2.0]),
+  testWidgets(
+    'RecordingWaveform renders non-finite and out-of-range amplitudes without exceptions',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: RecordingWaveform(amplitudes: [-1.0, double.nan, 0.5, 2.0]),
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(tester.takeException(), isNull);
-  });
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('RecordingView shows waveform while recording', (WidgetTester tester) async {
+  testWidgets('RecordingView shows waveform while recording', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -131,7 +139,10 @@ void main() {
   test('RecordingState copyWith preserves and updates amplitudes', () {
     final state = RecordingState(amplitudes: [0.1, 0.4]);
 
-    expect(state.copyWith(status: RecordingStatus.recording).amplitudes, [0.1, 0.4]);
+    expect(state.copyWith(status: RecordingStatus.recording).amplitudes, [
+      0.1,
+      0.4,
+    ]);
     expect(state.copyWith(amplitudes: [0.7]).amplitudes, [0.7]);
   });
 

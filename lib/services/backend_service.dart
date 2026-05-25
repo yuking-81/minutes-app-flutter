@@ -1,22 +1,27 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'app_logger.dart';
 
 class BackendService {
-  final Dio _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 60), // AI処理待ちのため長めに設定
-  ));
+  final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 60), // AI処理待ちのため長めに設定
+    ),
+  );
   final String _baseUrl;
 
   BackendService()
-      : _baseUrl = dotenv.isInitialized
-            ? dotenv.get('BACKEND_URL', fallback: 'http://localhost:3000')
-            : 'http://localhost:3000';
+    : _baseUrl = dotenv.isInitialized
+          ? dotenv.get('BACKEND_URL', fallback: 'http://localhost:3000')
+          : 'http://localhost:3000';
 
   void _logDioError(String operation, Object error) {
     if (error is DioException) {
-      print('BackendService: $operation url=${error.requestOptions.uri}');
-      print('BackendService: $operation status=${error.response?.statusCode} data=${error.response?.data}');
+      appLog('BackendService: $operation url=${error.requestOptions.uri}');
+      appLog(
+        'BackendService: $operation status=${error.response?.statusCode} data=${error.response?.data}',
+      );
     }
   }
 
@@ -27,7 +32,7 @@ class BackendService {
       return response.data['points'] as int;
     } catch (e) {
       _logDioError('getBalance', e);
-      print('BackendService: getBalance error: $e');
+      appLog('BackendService: getBalance error: $e');
       return 0;
     }
   }
@@ -42,7 +47,7 @@ class BackendService {
       return response.data['points'] as int;
     } catch (e) {
       _logDioError('addReward', e);
-      print('BackendService: addReward error: $e');
+      appLog('BackendService: addReward error: $e');
       return null;
     }
   }
@@ -56,11 +61,7 @@ class BackendService {
     try {
       final response = await _dio.post(
         '$_baseUrl/ai/summarize',
-        data: {
-          'deviceId': deviceId,
-          'text': text,
-          'pointCost': pointCost,
-        },
+        data: {'deviceId': deviceId, 'text': text, 'pointCost': pointCost},
       );
       return response.data['summary'] as String;
     } catch (e) {
@@ -68,7 +69,7 @@ class BackendService {
         throw Exception('ポイントが不足しています');
       }
       _logDioError('summarize', e);
-      print('BackendService: summarize error: $e');
+      appLog('BackendService: summarize error: $e');
       rethrow;
     }
   }
@@ -81,7 +82,10 @@ class BackendService {
     try {
       final formData = FormData.fromMap({
         'deviceId': deviceId,
-        'file': await MultipartFile.fromFile(filePath, filename: 'recording.m4a'),
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: 'recording.m4a',
+        ),
       });
 
       final response = await _dio.post(
@@ -91,7 +95,7 @@ class BackendService {
       return response.data['text'] as String;
     } catch (e) {
       _logDioError('transcribe', e);
-      print('BackendService: transcribe error: $e');
+      appLog('BackendService: transcribe error: $e');
       return null;
     }
   }

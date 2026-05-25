@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'app_logger.dart';
 
 class AdService {
   RewardedAd? _rewardedAd;
@@ -9,7 +10,8 @@ class AdService {
   final String _androidRewardedId = 'ca-app-pub-3940256099942544/5224354917';
   final String _iosRewardedId = 'ca-app-pub-3940256099942544/1712485313';
 
-  String get _adUnitId => Platform.isAndroid ? _androidRewardedId : _iosRewardedId;
+  String get _adUnitId =>
+      Platform.isAndroid ? _androidRewardedId : _iosRewardedId;
 
   // 広告をロード
   void loadRewardedAd({void Function()? onAdLoaded}) {
@@ -24,12 +26,12 @@ class AdService {
           _rewardedAd = ad;
           _isAdLoading = false;
           onAdLoaded?.call();
-          print('AdService: Rewarded ad loaded.');
+          appLog('AdService: Rewarded ad loaded.');
         },
         onAdFailedToLoad: (error) {
           _isAdLoading = false;
           _rewardedAd = null;
-          print('AdService: Rewarded ad failed to load: $error');
+          appLog('AdService: Rewarded ad failed to load: $error');
         },
       ),
     );
@@ -41,7 +43,7 @@ class AdService {
     required Function() onDismissed,
   }) {
     if (_rewardedAd == null) {
-      print('AdService: Warning - Ad not loaded yet.');
+      appLog('AdService: Warning - Ad not loaded yet.');
       onDismissed();
       return;
     }

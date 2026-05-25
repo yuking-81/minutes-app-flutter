@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../services/app_logger.dart';
 import '../services/backend_service.dart';
 import '../services/ad_service.dart';
 
@@ -17,11 +18,7 @@ class UserState {
   final int points;
   final bool isLoading;
 
-  UserState({
-    required this.userId,
-    this.points = 0,
-    this.isLoading = false,
-  });
+  UserState({required this.userId, this.points = 0, this.isLoading = false});
 
   UserState copyWith({String? userId, int? points, bool? isLoading}) {
     return UserState(
@@ -36,7 +33,7 @@ class UserState {
 class UserNotifier extends StateNotifier<UserState> {
   final BackendService _backend;
   final AdService _ad;
-  
+
   UserNotifier(this._backend, this._ad) : super(UserState(userId: '')) {
     _init();
     _ad.loadRewardedAd();
@@ -44,7 +41,7 @@ class UserNotifier extends StateNotifier<UserState> {
 
   Future<void> _init() async {
     state = state.copyWith(isLoading: true);
-    
+
     final prefs = await SharedPreferences.getInstance();
     String? userId = prefs.getString('user_unique_id');
 
@@ -61,7 +58,7 @@ class UserNotifier extends StateNotifier<UserState> {
   Future<String> _generateDeviceId() async {
     final deviceInfo = DeviceInfoPlugin();
     String id = const Uuid().v4(); // デフォルトはランダム
-    
+
     try {
       if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
@@ -71,7 +68,7 @@ class UserNotifier extends StateNotifier<UserState> {
         id = iosInfo.identifierForVendor ?? id;
       }
     } catch (e) {
-      print('UserNotifier: Device info error: $e');
+      appLog('UserNotifier: Device info error: $e');
     }
     return id;
   }
@@ -79,7 +76,7 @@ class UserNotifier extends StateNotifier<UserState> {
   // ポイント残高をサーバーから更新
   Future<void> refreshBalance() async {
     if (state.userId.isEmpty) return;
-    
+
     final balance = await _backend.getBalance(state.userId);
     state = state.copyWith(points: balance, isLoading: false);
   }
@@ -98,7 +95,10 @@ class UserNotifier extends StateNotifier<UserState> {
   }
 
   // 広告を表示して報酬を獲得
-  void showRewardAd({required Function() onComplete, required Function() onError}) {
+  void showRewardAd({
+    required Function() onComplete,
+    required Function() onError,
+  }) {
     _ad.showRewardedAd(
       onReward: (amount, type) async {
         await addPoints(amount.toInt());

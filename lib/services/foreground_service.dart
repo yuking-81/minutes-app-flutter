@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'app_logger.dart';
 
 @pragma('vm:entry-point')
 void startCallback() {
@@ -12,12 +13,12 @@ class MyTaskHandler extends TaskHandler {
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
-    print('ForegroundTask: Service Started');
+    appLog('ForegroundTask: Service Started');
   }
 
   @override
   void onNotificationButtonPressed(String id) {
-    print('ForegroundTask: Button Pressed: $id');
+    appLog('ForegroundTask: Button Pressed: $id');
     // アプリを起動（フォアグラウンドに持ってくる）
     FlutterForegroundTask.launchApp();
     // 通知ボタンが押されたことをメインアイソレートに伝える
@@ -31,7 +32,7 @@ class MyTaskHandler extends TaskHandler {
 
   @override
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
-    print('ForegroundTask: Service Destroyed (timeout: $isTimeout)');
+    appLog('ForegroundTask: Service Destroyed (timeout: $isTimeout)');
   }
 }
 
@@ -60,7 +61,7 @@ class ForegroundService {
 
   static Future<void> startService(bool isRecording) async {
     // 権限確認 (Android 13+ の通知許可など)
-    final NotificationPermission notificationPermissionStatus = 
+    final NotificationPermission notificationPermissionStatus =
         await FlutterForegroundTask.checkNotificationPermission();
     if (notificationPermissionStatus != NotificationPermission.granted) {
       await FlutterForegroundTask.requestNotificationPermission();
@@ -94,7 +95,11 @@ class ForegroundService {
   static List<NotificationButton> _getButtons(bool isRecording) {
     if (isRecording) {
       return [
-        const NotificationButton(id: MyTaskHandler.actionStop, text: '停止', textColor: Colors.red),
+        const NotificationButton(
+          id: MyTaskHandler.actionStop,
+          text: '停止',
+          textColor: Colors.red,
+        ),
       ];
     } else {
       return [

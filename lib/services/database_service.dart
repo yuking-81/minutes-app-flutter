@@ -75,23 +75,14 @@ class DatabaseService {
       map['ai_summary'] = map['aiSummary'];
       map.remove('aiSummary');
     }
-    
+
     final db = await instance.database;
-    return db.update(
-      'minutes',
-      map,
-      where: 'id = ?',
-      whereArgs: [minute.id],
-    );
+    return db.update('minutes', map, where: 'id = ?', whereArgs: [minute.id]);
   }
 
   Future<int> delete(int id) async {
     final db = await instance.database;
-    return await db.delete(
-      'minutes',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('minutes', where: 'id = ?', whereArgs: [id]);
   }
 
   Future close() async {

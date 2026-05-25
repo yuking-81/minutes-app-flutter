@@ -21,11 +21,13 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
   Future<void> _generateAI() async {
     setState(() => _isLoading = true);
     try {
-      await ref.read(minutesListProvider.notifier).generateAISummary(widget.minute);
+      await ref
+          .read(minutesListProvider.notifier)
+          .generateAISummary(widget.minute);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AIによる議事録変換が完了しました')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('AIによる議事録変換が完了しました')));
       }
     } catch (e) {
       if (mounted) {
@@ -33,9 +35,9 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
         if (errorMessage.contains('ポイントが不足しています')) {
           _showPointShortageDialog();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('エラーが発生しました: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('エラーが発生しました: $e')));
         }
       }
     } finally {
@@ -90,12 +92,14 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
 
     if (confirmed == true) {
       if (widget.minute.id != null) {
-        await ref.read(minutesListProvider.notifier).deleteMinute(widget.minute.id!);
+        await ref
+            .read(minutesListProvider.notifier)
+            .deleteMinute(widget.minute.id!);
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('削除が完了しました')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('削除が完了しました')));
         }
       }
     }
@@ -103,18 +107,21 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
 
   void _copyToClipboard(String text) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('クリップボードにコピーしました')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('クリップボードにコピーしました')));
   }
 
   @override
   Widget build(BuildContext context) {
     final minutesAsync = ref.watch(minutesListProvider);
     final currentMinute = minutesAsync.when(
-      data: (list) => list.firstWhere((m) => m.id == widget.minute.id, orElse: () => widget.minute),
+      data: (list) => list.firstWhere(
+        (m) => m.id == widget.minute.id,
+        orElse: () => widget.minute,
+      ),
       loading: () => widget.minute,
-      error: (_, __) => widget.minute,
+      error: (_, _) => widget.minute,
     );
 
     return Scaffold(
@@ -128,25 +135,33 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
           IconButton(
             icon: const Icon(Icons.share_outlined),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('共有機能は将来的に実装予定です')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('共有機能は将来的に実装予定です')));
             },
           ),
         ],
       ),
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 16, color: Theme.of(context).colorScheme.primary),
+                Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 const SizedBox(width: 8),
                 Text(
-                  DateFormat('yyyy年MM月dd日 HH:mm').format(currentMinute.createdAt),
+                  DateFormat(
+                    'yyyy年MM月dd日 HH:mm',
+                  ).format(currentMinute.createdAt),
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w600,
@@ -155,20 +170,20 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            
+
             _buildSectionTitle(context, '文字起こしテキスト', Icons.notes),
             const SizedBox(height: 12),
             _buildContentBox(context, currentMinute.content),
-            
+
             const SizedBox(height: 32),
-            
+
             if (currentMinute.aiSummary != null) ...[
               _buildSectionTitle(context, 'AI 議事録要約', Icons.auto_awesome),
               const SizedBox(height: 12),
               _buildAIContentBox(context, currentMinute.aiSummary!),
               const SizedBox(height: 24),
             ],
-            
+
             if (currentMinute.audioPath != null) ...[
               _buildSectionTitle(context, '録音データ', Icons.audiotrack),
               const SizedBox(height: 12),
@@ -189,10 +204,19 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                   : ElevatedButton.icon(
                       onPressed: _generateAI,
                       icon: const Icon(Icons.auto_awesome),
-                      label: Text(currentMinute.aiSummary == null ? 'AIで議事録に変換' : 'AIで再変換'),
+                      label: Text(
+                        currentMinute.aiSummary == null
+                            ? 'AIで議事録に変換'
+                            : 'AIで再変換',
+                      ),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
                       ),
                     ),
             ),
@@ -225,7 +249,9 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.2),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
@@ -243,20 +269,24 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-            Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+            Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.3),
+            Theme.of(
+              context,
+            ).colorScheme.secondaryContainer.withValues(alpha: 0.3),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

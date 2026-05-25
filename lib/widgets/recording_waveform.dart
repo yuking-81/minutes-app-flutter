@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 @visibleForTesting
@@ -24,16 +23,15 @@ double recordingWaveformNormalizedAmplitude(double amplitude) {
 double recordingWaveformDisplayAmplitude(double amplitude) {
   const noiseFloor = 0.20;
   final normalized = recordingWaveformNormalizedAmplitude(amplitude);
-  return (((normalized - noiseFloor) / (1.0 - noiseFloor)) * 2.0).clamp(0.0, 1.0).toDouble();
+  return (((normalized - noiseFloor) / (1.0 - noiseFloor)) * 2.0)
+      .clamp(0.0, 1.0)
+      .toDouble();
 }
 
 class RecordingWaveform extends StatelessWidget {
   final List<double> amplitudes;
 
-  const RecordingWaveform({
-    super.key,
-    required this.amplitudes,
-  });
+  const RecordingWaveform({super.key, required this.amplitudes});
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +68,11 @@ class _RecordingWaveformPainter extends CustomPainter {
       ..color = baselineColor
       ..strokeWidth = 1;
 
-    canvas.drawLine(Offset(0, centerY), Offset(size.width, centerY), baselinePaint);
+    canvas.drawLine(
+      Offset(0, centerY),
+      Offset(size.width, centerY),
+      baselinePaint,
+    );
 
     final samples = amplitudes.isEmpty ? const [0.04] : amplitudes;
     final barCount = samples.length;
@@ -84,7 +86,11 @@ class _RecordingWaveformPainter extends CustomPainter {
       ..strokeWidth = safeBarWidth;
 
     for (var i = 0; i < barCount; i++) {
-      final x = recordingWaveformBarCenterX(index: i, barCount: barCount, width: size.width);
+      final x = recordingWaveformBarCenterX(
+        index: i,
+        barCount: barCount,
+        width: size.width,
+      );
       if (x > size.width) break;
       final normalized = recordingWaveformDisplayAmplitude(samples[i]);
       final barHeight = 6 + (normalized * (size.height - 12));
