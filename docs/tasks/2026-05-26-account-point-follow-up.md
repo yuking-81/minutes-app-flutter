@@ -35,12 +35,14 @@
   - [x] `server` の `git status` に生成物が出ない状態にする
   - 完了コミット: `0d72407 chore: ignore generated server artifacts`
 
-- [ ] 5. 認証/ポイントAPIの統合テストを追加する
-  - [ ] register/login/me の正常系を確認する
-  - [ ] 重複メールと不正パスワードを確認する
-  - [ ] reward/consume/history の正常系を確認する
-  - [ ] 残高不足時に403になることを確認する
-  - [ ] transaction が記録されることを確認する
+- [x] 5. 認証/ポイントAPIの統合テストを追加する
+  - [x] register/login/me の正常系を確認する
+  - [x] 重複メールと不正パスワードを確認する
+  - [x] reward/consume/history の正常系を確認する
+  - [x] 残高不足時に403になることを確認する
+  - [x] transaction が記録されることを確認する
+  - 完了コミット: `8d8db89 test: cover authenticated point APIs`
+  - 確認: `npm run build` 成功、`npm test` 成功（supertestの一時HTTPサーバー起動のため権限付きで実行）
 
 ## 完了条件
 
