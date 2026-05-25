@@ -12,24 +12,28 @@
   - [ ] アプリ再起動後にログイン状態が復元される
   - [ ] ログアウトできる
   - [ ] ポイント履歴が表示される
+  - メモ: この環境では実機/シミュレータを起動して手動操作できないため未実施。実機確認時に結果を追記する。
 
 - [ ] 2. 録音課金の実動作を確認する
   - [ ] 録音開始時にログイン必須になる
   - [ ] 60秒経過で1pt消費される
   - [ ] 残高不足時に録音が自動停止する
   - [ ] 自動停止後に録音済み音声が文字起こし・保存へ進む
+  - メモ: マイク録音と60秒経過を含む実機操作が必要なため未実施。自動テストで補える範囲はタスク5で追加する。
 
 - [ ] 3. 本番/デプロイ環境変数を確認する
   - [ ] Backend `DATABASE_URL`
   - [ ] Backend `GROQ_API_KEY`
   - [ ] Backend `JWT_SECRET`
   - [ ] Flutter `.env` の `BACKEND_URL`
+  - メモ: 本番/Vercel環境にはこの環境からアクセスしない。`JWT_SECRET` は新規追加必須。
 
-- [ ] 4. server生成物を整理する
-  - [ ] `server/dist/` をGit管理対象外にする
-  - [ ] `server/dist-test/` をGit管理対象外にする
-  - [ ] `server/node_modules/` をGit管理対象外にする
-  - [ ] `server` の `git status` に生成物が出ない状態にする
+- [x] 4. server生成物を整理する
+  - [x] `server/dist/` をGit管理対象外にする
+  - [x] `server/dist-test/` をGit管理対象外にする
+  - [x] `server/node_modules/` をGit管理対象外にする
+  - [x] `server` の `git status` に生成物が出ない状態にする
+  - 完了コミット: `0d72407 chore: ignore generated server artifacts`
 
 - [ ] 5. 認証/ポイントAPIの統合テストを追加する
   - [ ] register/login/me の正常系を確認する
